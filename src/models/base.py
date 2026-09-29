@@ -1,53 +1,76 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
-from sqlalchemy.orm import DeclarativeBase, Relationship
+from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
-class User(DeclarativeBase):
+class Base(DeclarativeBase):
+    # I have absolutely no clue why do I need to inherit from DeclarativeBase,
+    # but apparently I do so here we are.
+    pass
+
+
+class Account(Base):
     """
-    Each users are stored into 'user'. An user can have multiple devices connected.
+    Each account is stored into 'account'. An user can have multiple devices connected to his account.
     """
 
-    __tablename__ = "user"
+    __tablename__ = "account"
 
-    email = Column(
+    email: Mapped[str] = mapped_column(
         String, primary_key=True
     )  # One email only can have one user, so this is our primary key.
-    name = (Column(String, nullable=False),)
-    password = Column(Integer, nullable=False)  # Password need to be hashed
+    name: Mapped[str] = mapped_column(String, nullable=False)
+
+    password: Mapped[str] = mapped_column(
+        String(256), nullable=False
+    )  # Password need to be hashed
 
 
-class Card(DeclarativeBase):
+class Card(Base):
+    """
+    Represent each Card stored, each one is associated to a Deck.
+    Only the owner of the deck can view his cards.
+    """
+
     __tablename__ = "card"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    question = Column(String, nullable=False)
-    answer = Column(String, nullable=False)
-    isTolerant = Column(Boolean, default=False)
-    position = Column(Integer, nullable=False)  # Position in a Deck
+    card_id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, nullable=False
+    )
+    question: Mapped[str] = mapped_column(String, nullable=False)
+    answer: Mapped[str] = mapped_column(String, nullable=False)
+    is_tolerant: Mapped[bool] = mapped_column(Boolean, default=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)  # Position in a Deck
 
-    deck_id = Column(Integer, ForeignKey("deck.id"))
+    deck_id: Mapped[int] = mapped_column(Integer, ForeignKey("deck.id"))
 
     # Relation vers le Deck
-    deck = Relationship("deck", back_populates="card")
+    deck: Mapped["Deck"] = relationship("deck", back_populates="card")  # noqa: UP037
 
 
-class Deck(DeclarativeBase):
+class Deck(Base):
     """
     Represent each Decks stored, each one has an owner.
     Only the owner can view his decks.
     To share a deck, an user need to download his deck and share it
-    externaly to KYL.
+    externally to KYL.
     """
 
     __tablename__ = "deck"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    name = Column(String, nullable=False, default="Unnamed deck")
-    description = Column(
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False, default="Unnamed deck")
+    description: Mapped[str] = mapped_column(
         String, nullable=False, default=""
-    )  # We don't want null in our DB but desc can be set to "" wich
-    # esentially do the thing with more security.
+    )  # We don't want null in our DB but desc can be set to "" which
+    # essentially do the thing with more security.
 
     # Relations
-    owner = Relationship("user", back_populates="deck")
-    cards = Relationship("card", back_populates="deck", cascade="all, delete-orphan")
+    owner_email: Mapped[str] = mapped_column(
+        String, ForeignKey("account.email", ondelete="CASCADE"), nullable=False
+    )
+    owner: Mapped[Account] = relationship("account", back_populates="deck")
+    card: Mapped[list[Card]] = relationship(
+        "card", back_populates="deck", cascade="all, delete-orphan"
+    )
