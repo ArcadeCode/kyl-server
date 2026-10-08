@@ -13,9 +13,9 @@ class Token(Base):
 
     __tablename__ = "token"
 
-    # BLAKE2b 128 hex chars digest of the token. The raw token is never stored.
+    # BLAKE3 256 bits hash digest of the token. The raw token is never stored.
     token_hash: Mapped[str] = mapped_column(
-        String(64), digest_size=64, primary_key=True, nullable=False
+        String(64), primary_key=True, nullable=False
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -30,5 +30,9 @@ class Token(Base):
     )
 
     account_email: Mapped[str] = mapped_column(
-        String, ForeignKey("account.email"), nullable=False
+        String,
+        ForeignKey("account.email"),
+        nullable=False,
+        ondelete="CASCADE",
+        index=True,
     )
