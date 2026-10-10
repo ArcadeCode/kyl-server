@@ -13,3 +13,11 @@ dependencies = [
     "psycopg2-binary>=2.9.13",
     "sqlalchemy>=2.0.53",
 ]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-cov", "pytest-mock"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = ["integration: needs a real Postgres"]

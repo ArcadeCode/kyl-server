@@ -2,14 +2,13 @@ from datetime import datetime
 from functools import wraps
 
 import blake3
-import timezone
 from flask import Blueprint, Response, g, jsonify, request
 
-from consts import RESPONSE_CALLBACK_URL, TOKEN_LIFESPAN
-from database import db
-from models.base import Account
-from models.security import Token
-from services.token import generate_and_hash_token, is_hash_valid
+from src.consts import RESPONSE_CALLBACK_URL, TOKEN_LIFESPAN
+from src.dbsetup import db
+from src.models.base import Account
+from src.models.security import Token
+from src.services.token import generate_and_hash_token, is_hash_valid
 
 token = Blueprint("token", __name__)
 
@@ -25,7 +24,7 @@ def create_token(email: str, account_password: str):
     """
 
     # 1. Look up the user by email in the database
-    user = db.session.query(Account).filter_by(Account.email).one_or_none()
+    user = db.session.query(Account).filter_by(Account.email == email).one_or_none()
 
     # 2. If user is not found, raise EmailNotFound
     if user is None:
@@ -90,7 +89,7 @@ def require_token(view):
         token_hash = blake3(key.encode()).hexdigest()
         token = db.session.get(Token, token_hash)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(datetime.UTC)
         if token is None or token.revoked_at is not None or token.expires_at < now:
             return jsonify({"error": "InvalidToken"}), 401
 

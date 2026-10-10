@@ -1,1 +1,1 @@
-from token import require_token
+from .token import require_token

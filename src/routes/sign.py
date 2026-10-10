@@ -1,9 +1,9 @@
 from flask import Blueprint, Response
 
-from database import db
-from models.base import Account
-from models.security import Token
-from services.sign import compare_password
+from src.dbsetup import db
+from src.models.base import Account
+from src.models.security import Token
+from src.services.sign import compare_password
 
 sign = Blueprint("sign", __name__)
 

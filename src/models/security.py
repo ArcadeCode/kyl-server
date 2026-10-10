@@ -30,9 +30,6 @@ class Token(Base):
     )
 
     account_email: Mapped[str] = mapped_column(
-        String,
         ForeignKey("account.email"),
         nullable=False,
-        ondelete="CASCADE",
-        index=True,
     )

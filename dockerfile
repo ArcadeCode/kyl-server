@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
 
 WORKDIR /app
 
@@ -9,4 +9,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "src.app:app"]
+CMD ["uv", "run", "--env-file", ".env", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "src.app:app"]

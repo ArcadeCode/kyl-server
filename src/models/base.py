@@ -23,7 +23,7 @@ class Account(Base):
     password: Mapped[str] = mapped_column(
         String(256), nullable=False
     )  # Hashed password + bcrypt version + bcrypt cost + salt
-    salt: Mapped[int] = mapped_column(int, nullable=False)
+    salt: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class Card(Base):
