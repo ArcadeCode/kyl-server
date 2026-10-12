@@ -3,27 +3,59 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
-    # I have absolutely no clue why do I need to inherit from DeclarativeBase,
-    # but apparently I do so here we are.
-    pass
+    """Common declarative base of every ORM class."""
 
 
 class Account(Base):
     """
-    Each account is stored into 'account'. An user can have multiple devices connected to his account.
+    Each account is stored into 'account'. A user can have multiple devices
+    connected to his account (one Token per device).
     """
 
     __tablename__ = "account"
 
-    email: Mapped[str] = mapped_column(
-        String, primary_key=True
-    )  # One email only can have one user, so this is our primary key.
+    # One email can only have one user, so this is our primary key.
+    email: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    # bcrypt hash: it already embeds the algorithm version, the cost and the salt.
+    password: Mapped[str] = mapped_column(String(256), nullable=False)
 
-    password: Mapped[str] = mapped_column(
-        String(256), nullable=False
-    )  # Hashed password + bcrypt version + bcrypt cost + salt
-    salt: Mapped[int] = mapped_column(Integer, nullable=False)
+    decks: Mapped[list["Deck"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
+    )
+    tokens: Mapped[list["Token"]] = relationship(  # noqa: F821
+        back_populates="account", cascade="all, delete-orphan"
+    )
+
+
+class Deck(Base):
+    """
+    Represent each Deck stored, each one has an owner.
+    Only the owner can view his decks.
+    To share a deck, a user needs to download it and share it externally to KYL.
+    """
+
+    __tablename__ = "deck"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False, default="Unnamed deck")
+    # We don't want NULL in our DB: an empty description is stored as "".
+    description: Mapped[str] = mapped_column(String, nullable=False, default="")
+
+    owner_email: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("account.email", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    owner: Mapped[Account] = relationship(back_populates="decks")
+    cards: Mapped[list["Card"]] = relationship(
+        back_populates="deck",
+        cascade="all, delete-orphan",
+        order_by="Card.position",
+    )
 
 
 class Card(Base):
@@ -39,39 +71,11 @@ class Card(Base):
     )
     question: Mapped[str] = mapped_column(String, nullable=False)
     answer: Mapped[str] = mapped_column(String, nullable=False)
-    is_tolerant: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Same default as the KYL App ('tolerant' unless the card says otherwise).
+    is_tolerant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False)  # Position in a Deck
 
-    deck_id: Mapped[int] = mapped_column(Integer, ForeignKey("deck.id"))
-
-    # Relation vers le Deck
-    deck: Mapped["Deck"] = relationship("deck", back_populates="card")  # noqa: UP037
-
-
-class Deck(Base):
-    """
-    Represent each Decks stored, each one has an owner.
-    Only the owner can view his decks.
-    To share a deck, an user need to download his deck and share it
-    externally to KYL.
-    """
-
-    __tablename__ = "deck"
-
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True, nullable=False
+    deck_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("deck.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    name: Mapped[str] = mapped_column(String, nullable=False, default="Unnamed deck")
-    description: Mapped[str] = mapped_column(
-        String, nullable=False, default=""
-    )  # We don't want null in our DB but desc can be set to "" which
-    # essentially do the thing with more security.
-
-    # Relations
-    owner_email: Mapped[str] = mapped_column(
-        String, ForeignKey("account.email", ondelete="CASCADE"), nullable=False
-    )
-    owner: Mapped[Account] = relationship("account", back_populates="deck")
-    card: Mapped[list[Card]] = relationship(
-        "card", back_populates="deck", cascade="all, delete-orphan"
-    )
+    deck: Mapped[Deck] = relationship(back_populates="cards")

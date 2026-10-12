@@ -1,99 +1,85 @@
-from datetime import datetime
-from functools import wraps
+from datetime import datetime, timezone
 
-import blake3
-from flask import Blueprint, Response, g, jsonify, request
+from flask import Blueprint, g, jsonify
 
-from src.consts import RESPONSE_CALLBACK_URL, TOKEN_LIFESPAN
-from src.dbsetup import db
-from src.models.base import Account
-from src.models.security import Token
-from src.services.token import generate_and_hash_token, is_hash_valid
+from auth import require_token
+from consts import TOKEN_LIFESPAN
+from database import db
+from models.base import Account
+from models.security import Token
+from routes.utils import error_response, get_json_strings
+from services.sign import compare_password, fake_verify
+from services.token import generate_and_hash_token
 
 token = Blueprint("token", __name__)
 
 
 @token.route("/api/v1/token/create", methods=["POST"])
-def create_token(email: str, account_password: str):
+def create_token():
     """
-    Generate a new session token for a user.
+    Log in: generate a new token (one per device) for an account.
 
-    Exceptions who can occur :
-        - `EmailNotFound` : This email doesn't exist in the DB.
-        - `IncorrectPassword` : This password isn't correct.
+    JSON body: {"email": str, "password": str}
+
+    Answers:
+        - 201: {"token": <raw token, shown only once>, "expires_at": <ISO 8601>}
+        - 400 `InvalidRequest`
+        - 401 `InvalidCredentials`: unknown email and wrong password are
+          deliberately indistinguishable.
+
+    Tokens last TOKEN_LIFESPAN and cannot be refreshed: log in again after that.
     """
-
-    # 1. Look up the user by email in the database
-    user = db.session.query(Account).filter_by(Account.email == email).one_or_none()
-
-    # 2. If user is not found, raise EmailNotFound
-    if user is None:
-        return jsonify(
-            {"error": "EmailNotFound", "message": "Email not found in the database."}
+    fields = get_json_strings("email", "password")
+    if fields is None:
+        return error_response(
+            "InvalidRequest", "Body must be JSON with email and password.", 400
         )
 
-    # 3. Compare the provided password with the stored hash
-    if is_hash_valid(user.password, key_to_validate=account_password):
-        return jsonify({"error": "IncorrectPassword", "message": "Incorrect password."})
+    email = fields["email"].strip().lower()
+    password = fields["password"]
+
+    account = db.session.get(Account, email)
+    if account is None:
+        fake_verify(password)
+        is_valid, new_hash = False, None
+    else:
+        is_valid, new_hash = compare_password(password, account.password)
+
+    if not is_valid:
+        return error_response("InvalidCredentials", "Incorrect email or password.", 401)
 
     t_key, t_hash = generate_and_hash_token()
-    token = Token(
-        token_hash=t_hash,
-        created_at=datetime.now(tz=True),
-        expires_at=datetime.now(tz=True) + TOKEN_LIFESPAN,
-        revoked_at=None,
-        account_email=email,
-    )
+    now = datetime.now(timezone.utc)
+    expires_at = now + TOKEN_LIFESPAN
 
-    db.session.add(token)
+    db.session.add(
+        Token(
+            token_hash=t_hash,
+            created_at=now,
+            expires_at=expires_at,
+            revoked_at=None,
+            account_email=account.email,
+        )
+    )
+    account.password = new_hash  # fresh salt on every successful login
     db.session.commit()
 
-    headers = {"Authorization": f"Bearer {t_key}"}
-
-    return Response(headers=headers, status=201, url=RESPONSE_CALLBACK_URL)
+    response = jsonify({"token": t_key, "expires_at": expires_at.isoformat()})
+    response.status_code = 201
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @token.route("/api/v1/token/revoke", methods=["POST"])
-def revoke_token(email: str, token_key: str):
+@require_token
+def revoke_token():
     """
-    Revoke a token of an user, essentially used to disconnect an account from a device.
+    Log out: revoke the token used to make this very request.
 
-    Exceptions who can occur :
-        - `EmailNotFound` : This email doesn't exist in the DB.
-        - `TokenNotFound` : This token isn't correct.
-        - `ExpiredToken` : This token is expired.
+    Answers:
+        - 200: {"status": "ok"}
+        - 401: missing / invalid / already revoked / expired token (see require_token)
     """
-    token = db.session.query(Token).filter_by(Token.token_hash).one_or_none()
-
-    if token is None:
-        return jsonify({"error": "TokenNotFound"}), 404
-
-    if token.expires_at < datetime.now(tz=True):
-        return jsonify({"error": "ExpiredToken"}), 400
-
-    # Revoke the token
-    token.revoked_at = datetime.now(tz=True)
+    g.token.revoked_at = datetime.now(timezone.utc)
     db.session.commit()
-
     return jsonify({"status": "ok"}), 200
-
-
-def require_token(view):
-    @wraps(view)
-    def wrapper(*args, **kwargs):
-        scheme, _, key = request.headers.get("Authorization", "").partition(" ")
-        if scheme != "Bearer" or not key:
-            return jsonify({"error": "MissingToken"}), 401
-
-        # Même hash que celui stocké à la création du token.
-        token_hash = blake3(key.encode()).hexdigest()
-        token = db.session.get(Token, token_hash)
-
-        now = datetime.now(datetime.UTC)
-        if token is None or token.revoked_at is not None or token.expires_at < now:
-            return jsonify({"error": "InvalidToken"}), 401
-
-        g.account_email = token.account_email  # disponible dans la vue
-        return view(*args, **kwargs)
-
-    return wrapper

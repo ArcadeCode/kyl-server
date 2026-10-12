@@ -3,4 +3,4 @@ services:
     volumes:
       - ./src:/app/src
     # In development, we want to run the Flask app in debug mode and have it reload on code changes. The following command achieves that.
-    command: ["uv", "run", "flask", "--app", "src.app", "run", "--debug", "--host", "0.0.0.0", "--port", "5000"]
+    command: ["uv", "run", "flask", "--app", "app", "run", "--debug", "--host", "0.0.0.0", "--port", "5000"]
