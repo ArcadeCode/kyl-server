@@ -1,18 +1,21 @@
 from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from .serializable import SerializableMixin
+
 
 class Base(DeclarativeBase):
     """Common declarative base of every ORM class."""
 
 
-class Account(Base):
+class Account(SerializableMixin, Base):
     """
     Each account is stored into 'account'. A user can have multiple devices
     connected to his account (one Token per device).
     """
 
     __tablename__ = "account"
+    __json_fields__ = ("email", "name")
 
     # One email can only have one user, so this is our primary key.
     email: Mapped[str] = mapped_column(String, primary_key=True)
@@ -28,7 +31,7 @@ class Account(Base):
     )
 
 
-class Deck(Base):
+class Deck(SerializableMixin, Base):
     """
     Represent each Deck stored, each one has an owner.
     Only the owner can view his decks.
@@ -36,6 +39,7 @@ class Deck(Base):
     """
 
     __tablename__ = "deck"
+    __json_fields__ = ("id", "name", "description", "owner_email")
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False
@@ -58,13 +62,21 @@ class Deck(Base):
     )
 
 
-class Card(Base):
+class Card(SerializableMixin, Base):
     """
     Represent each Card stored, each one is associated to a Deck.
     Only the owner of the deck can view his cards.
     """
 
     __tablename__ = "card"
+    __json_fields__ = (
+        "card_id",
+        "question",
+        "answer",
+        "is_tolerant",
+        "position",
+        "deck_id",
+    )
 
     card_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False

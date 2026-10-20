@@ -4,19 +4,21 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Account, Base
+from .serializable import SerializableMixin
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class StudySession(Base):
+class StudySession(SerializableMixin, Base):
     """
     One study session of a user. It owns the immutable snapshots
     (SessionDeck / SessionCard) of what was studied at that moment.
     """
 
     __tablename__ = "study_session"
+    __json_fields__ = ("id", "timestamp", "owner_email", "tolerance_allowed")
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False
@@ -38,12 +40,13 @@ class StudySession(Base):
     )
 
 
-class SessionDeck(Base):
+class SessionDeck(SerializableMixin, Base):
     """
     Immutable historical copy of a Deck at a given moment.
     """
 
     __tablename__ = "session_deck"
+    __json_fields__ = ("id", "name", "description", "study_session_id")
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False
@@ -65,12 +68,20 @@ class SessionDeck(Base):
     )
 
 
-class SessionCard(Base):
+class SessionCard(SerializableMixin, Base):
     """
     Immutable historical copy of a Card at a given moment.
     """
 
     __tablename__ = "session_card"
+    __json_fields__ = (
+        "id",
+        "question",
+        "answer",
+        "is_tolerant",
+        "position",
+        "session_deck_id",
+    )
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False

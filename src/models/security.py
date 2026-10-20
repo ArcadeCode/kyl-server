@@ -4,14 +4,16 @@ from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Account, Base
+from .serializable import SerializableMixin
 
 
-class Token(Base):
+class Token(SerializableMixin, Base):
     """
     Store each communication token of a user (one per connected device).
     """
 
     __tablename__ = "token"
+    __json_fields__ = ("created_at", "expires_at", "revoked_at", "account_email")
 
     # BLAKE3 256 bits hash digest of the token, hex encoded (64 chars).
     # The raw token is never stored.
