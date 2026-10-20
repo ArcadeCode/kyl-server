@@ -15,9 +15,15 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-cov", "pytest-mock"]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-markers = ["integration: needs a real Postgres"]
+addopts = "-ra"
+markers = [
+    "integration: needs the test PostgreSQL (docker compose -f compose.test.yml up -d)",
+]

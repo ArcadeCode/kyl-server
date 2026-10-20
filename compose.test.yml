@@ -1,0 +1,20 @@
+# Throw-away PostgreSQL used only by the integration tests.
+#   docker compose -f compose.test.yml up -d
+#   uv run pytest
+#   docker compose -f compose.test.yml down
+services:
+  postgres-test:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: kyl_test
+      POSTGRES_USER: kyl_test
+      POSTGRES_PASSWORD: kyl_test
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql   # data lives in RAM: fast, and nothing to clean up
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kyl_test -d kyl_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
