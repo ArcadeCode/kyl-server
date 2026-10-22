@@ -41,7 +41,7 @@ class Deck(SerializableMixin, Base):
     __tablename__ = "deck"
     __json_fields__ = ("id", "name", "description", "owner_email")
 
-    id: Mapped[int] = mapped_column(
+    deck_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False
     )
     name: Mapped[str] = mapped_column(String, nullable=False, default="Unnamed deck")
