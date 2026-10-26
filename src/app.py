@@ -17,6 +17,8 @@ from sqlalchemy.engine import URL
 
 import models  # noqa: F401  (registers every table on the metadata)
 from database import db
+from routes.card import card
+from routes.deck import deck
 from routes.sign import sign
 from routes.token import token
 
@@ -50,6 +52,8 @@ def create_app(config: dict | None = None) -> Flask:
     # 4. Add blueprints
     app.register_blueprint(sign)
     app.register_blueprint(token)
+    app.register_blueprint(deck)
+    app.register_blueprint(card)
 
     # 5. CLI
     @app.cli.command("init-db")
