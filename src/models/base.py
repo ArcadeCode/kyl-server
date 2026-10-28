@@ -39,7 +39,7 @@ class Deck(SerializableMixin, Base):
     """
 
     __tablename__ = "deck"
-    __json_fields__ = ("id", "name", "description", "owner_email")
+    __json_fields__ = ("deck_id", "name", "description", "owner_email")
 
     deck_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False
@@ -88,6 +88,9 @@ class Card(SerializableMixin, Base):
     position: Mapped[int] = mapped_column(Integer, nullable=False)  # Position in a Deck
 
     deck_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("deck.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer,
+        ForeignKey("deck.deck_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     deck: Mapped[Deck] = relationship(back_populates="cards")

@@ -7,6 +7,10 @@ ROUTES = {
     "/api/v1/connexion/signup",
     "/api/v1/token/create",
     "/api/v1/token/revoke",
+    "/api/v1/decks",
+    "/api/v1/deck/<int:deck_id>",
+    "/api/v1/deck/<int:deck_id>/cards",
+    "/api/v1/card/<int:card_id>",
 }
 
 

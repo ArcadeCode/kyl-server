@@ -19,7 +19,7 @@ from sqlalchemy.exc import OperationalError
 
 from app import create_app
 from database import db
-from models import Account, Token
+from models import Account, Card, Deck, Token
 from services.token import generate_and_hash_token
 
 DEFAULT_TEST_DATABASE_URL = "postgresql+psycopg2://kyl_test:kyl_test@localhost:5433/kyl_test"
@@ -123,6 +123,46 @@ def make_token(app):
             )
             db.session.commit()
         return key
+
+    return _make
+
+
+@pytest.fixture
+def make_deck(app):
+    """
+    Insert a deck (with optional cards) for an existing owner. Returns its deck_id.
+
+    `cards` is an iterable of (question, answer); positions follow the order.
+    """
+
+    def _make(owner_email, name="Deck", description="", cards=()):
+        with app.app_context():
+            deck = Deck(name=name, description=description, owner_email=owner_email)
+            for position, (question, answer) in enumerate(cards):
+                deck.cards.append(Card(question=question, answer=answer, position=position))
+            db.session.add(deck)
+            db.session.commit()
+            return deck.deck_id
+
+    return _make
+
+
+@pytest.fixture
+def make_card(app):
+    """Insert a card in an existing deck. Returns its card_id."""
+
+    def _make(deck_id, question="q", answer="a", is_tolerant=True, position=0):
+        with app.app_context():
+            card = Card(
+                deck_id=deck_id,
+                question=question,
+                answer=answer,
+                is_tolerant=is_tolerant,
+                position=position,
+            )
+            db.session.add(card)
+            db.session.commit()
+            return card.card_id
 
     return _make
 

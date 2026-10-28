@@ -44,7 +44,7 @@ def account(email="a@b.fr"):
 EXPECTED_COLUMNS = {
     # table: {column: nullable}
     "account": {"email": False, "name": False, "password": False},
-    "deck": {"id": False, "name": False, "description": False, "owner_email": False},
+    "deck": {"deck_id": False, "name": False, "description": False, "owner_email": False},
     "card": {
         "card_id": False, "question": False, "answer": False,
         "is_tolerant": False, "position": False, "deck_id": False,
@@ -64,14 +64,14 @@ EXPECTED_COLUMNS = {
 }
 
 EXPECTED_PRIMARY_KEYS = {
-    "account": ["email"], "deck": ["id"], "card": ["card_id"], "token": ["token_hash"],
+    "account": ["email"], "deck": ["deck_id"], "card": ["card_id"], "token": ["token_hash"],
     "study_session": ["id"], "session_deck": ["id"], "session_card": ["id"],
 }
 
 # (table, column) -> (referred table, referred column)
 EXPECTED_FOREIGN_KEYS = {
     ("deck", "owner_email"): ("account", "email"),
-    ("card", "deck_id"): ("deck", "id"),
+    ("card", "deck_id"): ("deck", "deck_id"),
     ("token", "account_email"): ("account", "email"),
     ("study_session", "owner_email"): ("account", "email"),
     ("session_deck", "study_session_id"): ("study_session", "id"),
@@ -169,7 +169,7 @@ def test_card_requires_question_answer_and_position(ctx):
     ctx.commit()
     for values in ({"answer": "a", "position": 0}, {"question": "q", "position": 0},
                    {"question": "q", "answer": "a"}):
-        ctx.add(Card(deck_id=deck.id, **values))
+        ctx.add(Card(deck_id=deck.deck_id, **values))
         with pytest.raises(IntegrityError):
             ctx.commit()
         ctx.rollback()
@@ -212,7 +212,7 @@ def test_deck_defaults(ctx):
     ctx.commit()
     assert deck.name == "Unnamed deck"
     assert deck.description == ""
-    assert isinstance(deck.id, int)
+    assert isinstance(deck.deck_id, int)
 
 
 def test_card_is_tolerant_by_default(ctx):

@@ -17,14 +17,16 @@ deck = Blueprint("deck", __name__)
 def _owned_deck(deck_id: int) -> Deck | None:
     """The deck, only if it belongs to the caller (otherwise None, never a 403)."""
     return db.session.scalar(
-        select(Deck).where(Deck.id == deck_id, Deck.owner_email == g.account_email)
+        select(Deck).where(Deck.deck_id == deck_id, Deck.owner_email == g.account_email)
     )
 
 
 def _name_taken(name: str, ignore_deck_id: int | None = None) -> bool:
-    query = select(Deck.id).where(Deck.name == name, Deck.owner_email == g.account_email)
+    query = select(Deck.deck_id).where(
+        Deck.name == name, Deck.owner_email == g.account_email
+    )
     if ignore_deck_id is not None:
-        query = query.where(Deck.id != ignore_deck_id)
+        query = query.where(Deck.deck_id != ignore_deck_id)
     return db.session.scalar(query.limit(1)) is not None
 
 
@@ -54,7 +56,7 @@ def get_all_decks():
         - 401: missing / invalid / already revoked / expired token (see require_token)
     """
     decks = db.session.scalars(
-        select(Deck).where(Deck.owner_email == g.account_email).order_by(Deck.id)
+        select(Deck).where(Deck.owner_email == g.account_email).order_by(Deck.deck_id)
     ).all()
     return jsonify([d.to_dict() for d in decks]), 200
 
@@ -84,7 +86,9 @@ def create_deck():
         return error_response("InvalidRequest", f"{e.field}: {e.reason}", 400)
 
     count = db.session.scalar(
-        select(func.count()).select_from(Deck).where(Deck.owner_email == g.account_email)
+        select(func.count())
+        .select_from(Deck)
+        .where(Deck.owner_email == g.account_email)
     )
     if count >= MAX_DECK_BY_USER:
         return error_response(
@@ -129,7 +133,7 @@ def update_deck(deck_id: int):
     except InvalidDeckData as e:
         return error_response("InvalidRequest", f"{e.field}: {e.reason}", 400)
 
-    if "name" in changes and _name_taken(changes["name"], ignore_deck_id=owned.id):
+    if "name" in changes and _name_taken(changes["name"], ignore_deck_id=owned.deck_id):
         return error_response("Conflict", "A deck with this name already exists.", 409)
 
     for field, value in changes.items():
@@ -197,14 +201,16 @@ def create_card(deck_id: int):
         return error_response("InvalidRequest", f"{e.field}: {e.reason}", 400)
 
     count = db.session.scalar(
-        select(func.count()).select_from(Card).where(Card.deck_id == owned.id)
+        select(func.count()).select_from(Card).where(Card.deck_id == owned.deck_id)
     )
     if count >= MAX_CARD_BY_DECK:
         return error_response(
-            "CardLimitReached", f"Limit of {MAX_CARD_BY_DECK} cards per deck reached.", 409
+            "CardLimitReached",
+            f"Limit of {MAX_CARD_BY_DECK} cards per deck reached.",
+            409,
         )
 
-    new_card.deck_id = owned.id
+    new_card.deck_id = owned.deck_id
     db.session.add(new_card)
     if (failure := _commit_or_500()) is not None:
         return failure
@@ -228,6 +234,8 @@ def get_all_cards(deck_id: int):
         return error_response("DeckNotFound", "Deck not found.", 404)
 
     cards = db.session.scalars(
-        select(Card).where(Card.deck_id == owned.id).order_by(Card.position, Card.card_id)
+        select(Card)
+        .where(Card.deck_id == owned.deck_id)
+        .order_by(Card.position, Card.card_id)
     ).all()
     return jsonify([c.to_dict() for c in cards]), 200

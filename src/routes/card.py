@@ -16,7 +16,7 @@ def _owned_card(card_id: int) -> Card | None:
     """The card, only if its deck belongs to the caller (otherwise None, never a 403)."""
     return db.session.scalar(
         select(Card)
-        .join(Deck, Card.deck_id == Deck.id)
+        .join(Deck, Card.deck_id == Deck.deck_id)
         .where(Card.card_id == card_id, Deck.owner_email == g.account_email)
     )
 
