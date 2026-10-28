@@ -19,6 +19,7 @@ import models  # noqa: F401  (registers every table on the metadata)
 from database import db
 from routes.card import card
 from routes.deck import deck
+from routes.session import session
 from routes.sign import sign
 from routes.token import token
 
@@ -54,6 +55,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(token)
     app.register_blueprint(deck)
     app.register_blueprint(card)
+    app.register_blueprint(session)
 
     # 5. CLI
     @app.cli.command("init-db")

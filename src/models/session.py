@@ -18,9 +18,9 @@ class StudySession(SerializableMixin, Base):
     """
 
     __tablename__ = "study_session"
-    __json_fields__ = ("id", "timestamp", "owner_email", "tolerance_allowed")
+    __json_fields__ = ("session_id", "timestamp", "owner_email", "tolerance_allowed")
 
-    id: Mapped[int] = mapped_column(
+    session_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False
     )
     timestamp: Mapped[datetime] = mapped_column(
@@ -46,9 +46,9 @@ class SessionDeck(SerializableMixin, Base):
     """
 
     __tablename__ = "session_deck"
-    __json_fields__ = ("id", "name", "description", "study_session_id")
+    __json_fields__ = ("session_deck_id", "name", "description", "study_session_id")
 
-    id: Mapped[int] = mapped_column(
+    session_deck_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
@@ -75,7 +75,7 @@ class SessionCard(SerializableMixin, Base):
 
     __tablename__ = "session_card"
     __json_fields__ = (
-        "id",
+        "session_card_id",
         "question",
         "answer",
         "is_tolerant",
@@ -83,7 +83,7 @@ class SessionCard(SerializableMixin, Base):
         "session_deck_id",
     )
 
-    id: Mapped[int] = mapped_column(
+    session_card_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False
     )
     question: Mapped[str] = mapped_column(String, nullable=False)
