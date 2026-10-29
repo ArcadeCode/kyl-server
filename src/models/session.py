@@ -18,7 +18,13 @@ class StudySession(SerializableMixin, Base):
     """
 
     __tablename__ = "study_session"
-    __json_fields__ = ("session_id", "timestamp", "owner_email", "tolerance_allowed")
+    __json_fields__ = (
+        "session_id",
+        "timestamp",
+        "owner_email",
+        "tolerance_allowed",
+        "is_tolerance_forced",
+    )
 
     session_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, nullable=False
@@ -33,6 +39,7 @@ class StudySession(SerializableMixin, Base):
         index=True,
     )
     tolerance_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    is_tolerance_forced: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
     owner: Mapped[Account] = relationship()
     decks: Mapped[list["SessionDeck"]] = relationship(
@@ -77,7 +84,8 @@ class SessionCard(SerializableMixin, Base):
     __json_fields__ = (
         "session_card_id",
         "question",
-        "answer",
+        "correct_answer",
+        "user_answer",
         "is_tolerant",
         "position",
         "session_deck_id",
@@ -87,7 +95,8 @@ class SessionCard(SerializableMixin, Base):
         Integer, primary_key=True, autoincrement=True, nullable=False
     )
     question: Mapped[str] = mapped_column(String, nullable=False)
-    answer: Mapped[str] = mapped_column(String, nullable=False)
+    correct_answer: Mapped[str] = mapped_column(String, nullable=False)
+    user_answer: Mapped[str] = mapped_column(String, nullable=False)
     is_tolerant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Used to retrieve the original order when a session deck was shuffled.
     position: Mapped[int] = mapped_column(Integer, nullable=False)

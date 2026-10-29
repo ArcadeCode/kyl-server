@@ -2,19 +2,21 @@ from datetime import timedelta
 
 # Size limitations for various entities in the application
 #
-# FOR NOW, A USER TAKE UP TO 960 MB
+# FOR NOW, A USER TAKE UP TO 1360 MB
 #
 # Each char is stored in utf-8, so each ASCII char is 1 byte. The size limitation is in bytes.
 # A card can take up to 8 kB
 # A deck can take up to 200*8 kB = 1600 kB
 # A user can have up to 100*1600 kB = 160 000 kB (160 MB)
+# NOTE: In case of a rework, we need to ensure a good name convention,
+#           MAX_*CARDS_BY_..., MAX_*DECKS_..., MAX_*SESSIONS_BY_...
 MAX_DECK_BY_USER = 100
 MAX_CARD_BY_DECK = 200
 MAX_CARD_QUESTION_LENGTH = 4000
 MAX_CARD_ANSWER_LENGTH = 4000
-# Each deck can take up to 1600 kB
-# A session can take up to 5*1600 kB = 8 MB
-# A user can have up to 8*100 MB = 800 MB
+# Each session deck can take up to 1600 kB + 4 kB * 200 (user_answer column) = 2400 kB
+# A session can take up to 5*2400 kB = 12 MB
+# A user can have up to 12*100 MB = 1200 MB
 MAX_DECK_BY_SESSION = 5
 MAX_SESSION_BY_USER = 100
 # TODO: For the future
