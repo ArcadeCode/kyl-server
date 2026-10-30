@@ -11,6 +11,8 @@ from services.sign import create_hash
 
 sign = Blueprint("sign", __name__)
 
+# TODO: Add a "/api/v1/resetpassword/" endpoint with setup SMTP .env variables.
+
 
 def _email_taken() -> Response:
     return error_response("EmailAlreadyUsed", "This email is already registered.", 409)
