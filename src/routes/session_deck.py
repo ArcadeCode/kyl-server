@@ -50,7 +50,7 @@ def _json_body() -> dict | None:
     methods=["DELETE"],
 )
 @require_token
-def delete_deck(session_deck_id: int):
+def delete_session_deck(session_deck_id: int):
     """
     Delete a session deck of a study session of the owner.
 
@@ -80,11 +80,11 @@ def delete_deck(session_deck_id: int):
     methods=["POST"],
 )
 @require_token
-def create_card(session_deck_id: int):
+def create_session_card(session_deck_id: int):
     """
     Add a session card to a deck of a study session of the owner.
 
-    JSON body: {"question": str, "answer": str, "is_tolerant": bool, "position": int >= 0}
+    JSON body: {"question": str, "correct_answer": str, "user_answer": str, "is_tolerant": bool, "position": int >= 0}
 
     Answers:
         - 201: {"session_card": {...}}
@@ -132,9 +132,9 @@ def create_card(session_deck_id: int):
     methods=["POST"],
 )
 @require_token
-def get_all_cards(session_deck_id: int):
+def get_all_session_cards(session_deck_id: int):
     """
-    Return all cards of a deck owned by the user, sorted by position.
+    Return all session cards of a deck owned by the user, sorted by position.
 
     Answers:
         - 200: [session_card0, session_card1, ...]

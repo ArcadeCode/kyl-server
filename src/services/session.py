@@ -54,8 +54,8 @@ def _validate_session_deck_field(field: str, value: object) -> str:
 
 
 def _validate_study_session_field(field: str, value: object) -> str:
-    if field == "timestamp" and not isinstance(value, datetime):
-        raise InvalidStudySessionData(field, "must be a timestamp")
+    if field == "timestamp" and not isinstance(value, str):
+        raise InvalidStudySessionData(field, "must be a string")
     if field == "tolerance_allowed" and not isinstance(value, bool):
         raise InvalidStudySessionData(field, "must be a boolean")
     if field == "is_tolerance_forced" and not isinstance(value, bool):
@@ -141,13 +141,13 @@ def parse_study_session(data: dict) -> dict:
     Raises:
         InvalidStudySessionData: `name` is missing, or a field is invalid.
     """
-    for field, value in zip(data):
-        if field == "timestamp" and not value:
+    for field, value in data.items():
+        if field == "timestamp" and value == None:
             raise InvalidStudySessionData(field, "must not be empty")
-        if field == "tolerance_allowed" and not value:
-            raise InvalidSessionDeckData(field, "must not be empty")
-        if field == "is_tolerance_forced" and not value:
-            raise InvalidSessionDeckData(field, "must not be empty")
+        if field == "tolerance_allowed" and not value == None:
+            raise InvalidStudySessionData(field, "must not be empty")
+        if field == "is_tolerance_forced" and not value == None:
+            raise InvalidStudySessionData(field, "must not be empty")
 
     return {
         "timestamp": _validate_study_session_field("timestamp", data["timestamp"]),

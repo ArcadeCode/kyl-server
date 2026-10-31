@@ -8,7 +8,7 @@ from database import db
 from exceptions import InvalidDeckData
 from models.session import SessionDeck, StudySession
 from routes.utils import error_response
-from services.session import parse_session_deck
+from services.session import parse_session_deck, parse_study_session
 
 
 def _owned_session(session_id: int) -> StudySession | None:
@@ -19,9 +19,6 @@ def _owned_session(session_id: int) -> StudySession | None:
             StudySession.owner_email == g.account_email,
         )
     )
-
-
-session = Blueprint("deck", __name__)
 
 
 def _commit_or_500():
@@ -39,6 +36,9 @@ def _json_body() -> dict | None:
     return body if isinstance(body, dict) else None
 
 
+session = Blueprint("session", __name__)
+
+
 @session.route("/api/v1/sessions", methods=["GET"])
 @require_token
 def get_all_sessions():
@@ -48,6 +48,10 @@ def get_all_sessions():
     Answers:
         - 200: [study_session0, study_session1, ...]
         - 401: missing / invalid / already revoked / expired token (see require_token)
+
+    TODO: For now only get_all_sessions exist, no get_session endpoint,
+        this will be change in the future but it's isn't important, it
+        will be change when switch Flask to FastAPI.
     """
     sessions = db.session.scalars(
         select(StudySession)
@@ -83,7 +87,7 @@ def create_session():
         return error_response("InvalidRequest", "Body must be a JSON object.", 400)
 
     try:
-        fields = parse_session_deck(body)
+        fields = parse_study_session(body)
     except InvalidDeckData as e:
         return error_response("InvalidRequest", f"{e.field}: {e.reason}", 400)
 
@@ -159,8 +163,8 @@ def get_all_session_decks(study_session_id: int):
 
     session_cards = db.session.scalars(
         select(SessionDeck)
-        .where(SessionDeck.deck_id == owned.deck_id)
-        .order_by(SessionDeck.position, SessionDeck.card_id)
+        .where(SessionDeck.session_deck_id == owned.session_deck_id)
+        .order_by(SessionDeck.position, SessionDeck.session_card_id)
     ).all()
     return jsonify([c.to_dict() for c in session_cards]), 200
 
@@ -196,7 +200,7 @@ def create_session_deck(study_session_id: int):
         .select_from(SessionDeck)
         .where(SessionDeck.owner_email == g.account_email)
     )
-    if count >= MAX_DECK_BY_USER:
+    if count >= MAX_SESSION_BY_USER:
         return error_response(
             "SessionDeckLimitReached",
             f"Limit of {MAX_DECK_BY_USER} decks reached.",

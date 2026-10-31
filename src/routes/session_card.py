@@ -19,7 +19,7 @@ def _owned_session_card(session_card_id: int) -> SessionCard | None:
     """
     return db.session.scalar(
         select(SessionCard)
-        .join(SessionDeck, SessionCard.deck_id == SessionDeck.deck_id)
+        .join(SessionDeck, SessionCard.session_deck_id == SessionDeck.session_deck_id)
         .join(StudySession, SessionDeck.decks == StudySession.decks)
         .where(
             SessionCard.session_card_id == session_card_id,
@@ -49,7 +49,7 @@ def get_session_card(session_card_id: int):
 
 @session.route("/api/v1/session/card/<int:session_card_id>", methods=["DELETE"])
 @require_token
-def delete_card(session_card_id: int):
+def delete_session_card(session_card_id: int):
     """
     Answers:
         - 204: the session card was deleted (empty body)

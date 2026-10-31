@@ -63,7 +63,7 @@ class SessionDeck(SerializableMixin, Base):
 
     study_session_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("study_session.id", ondelete="CASCADE"),
+        ForeignKey("study_session.session_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -103,7 +103,7 @@ class SessionCard(SerializableMixin, Base):
 
     session_deck_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("session_deck.id", ondelete="CASCADE"),
+        ForeignKey("session_deck.session_deck_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
