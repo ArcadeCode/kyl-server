@@ -2,7 +2,7 @@
 
 - **v0.1.0** : Final touch
     - [ ] Make the Session historic infinite with compression of old entries.
-    - [ ] Setup the SMTP server for password reset.
+    - [X] Setup the SMTP server for password reset.
 - **v0.2.0** : FastAPI port
     - [ ] Switching the backend from Flask for FastAPI.
     - [ ] Add Pydantic to the backend.

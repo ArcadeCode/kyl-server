@@ -37,3 +37,14 @@ class Token(SerializableMixin, Base):
         index=True,
     )
     account: Mapped[Account] = relationship(back_populates="tokens")
+
+class PasswordResetToken(SerializableMixin, Base):
+    __tablename__ = "password_reset_token"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    account_email: Mapped[str] = mapped_column(
+        String, ForeignKey("account.email", ondelete="CASCADE"), nullable=False, index=True
+    )

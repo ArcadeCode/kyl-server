@@ -66,12 +66,20 @@ EXPECTED_COLUMNS = {
         "user_answer": False, "is_tolerant": False, "position": False,
         "session_deck_id": False,
     },
+    "password_reset_token": {
+        "token_hash": False,
+        "created_at": False,
+        "expires_at": False,
+        "used_at": True,
+        "account_email": False,
+    },
     
 }
 
 EXPECTED_PRIMARY_KEYS = {
     "account": ["email"], "deck": ["deck_id"], "card": ["card_id"], "token": ["token_hash"],
     "study_session": ["session_id"], "session_deck": ["session_deck_id"], "session_card": ["session_card_id"],
+    "password_reset_token": ["token_hash"],
     
 }
 
@@ -83,6 +91,7 @@ EXPECTED_FOREIGN_KEYS = {
     ("study_session", "owner_email"): ("account", "email"),
     ("session_deck", "study_session_id"): ("study_session", "session_id"),
     ("session_card", "session_deck_id"): ("session_deck", "session_deck_id"),
+    ("password_reset_token", "account_email"): ("account", "email"),
 }
 
 
@@ -131,6 +140,9 @@ def test_token_hash_column_fits_a_blake3_hex_digest(inspector):
 @pytest.mark.parametrize("table, column", [
     ("token", "created_at"), ("token", "expires_at"), ("token", "revoked_at"),
     ("study_session", "timestamp"),
+    ("password_reset_token", "created_at"),
+    ("password_reset_token", "expires_at"),
+    ("password_reset_token", "used_at"),
 ])
 def test_datetime_columns_are_timezone_aware(inspector, table, column):
     col = next(c for c in inspector.get_columns(table) if c["name"] == column)

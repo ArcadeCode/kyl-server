@@ -10,8 +10,9 @@ __all__ = [
     "Base",
     "Card",
     "Deck",
+    "PasswordResetToken",
     "SessionCard",
     "SessionDeck",
     "StudySession",
-    "Token",
+    "Token"
 ]
