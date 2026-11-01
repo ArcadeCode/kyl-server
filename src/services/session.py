@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from consts import MAX_CARD_ANSWER_LENGTH, MAX_CARD_QUESTION_LENGTH
 from exceptions import (
@@ -20,6 +20,32 @@ _MAX_LENGTHS = {
     "correct_answer": MAX_CARD_ANSWER_LENGTH,
     "user_answer": MAX_CARD_ANSWER_LENGTH,
 }
+_STUDY_SESSION_REQUIRED_PARAMS = (
+    "timestamp",
+    "tolerance_allowed",
+    "is_tolerance_forced",
+)
+
+
+def _parse_timestamp(value: str) -> datetime:
+    """
+    Parse an ISO 8601 timestamp and return a timezone-aware datetime in UTC.
+
+    - A trailing 'Z' is interpreted as UTC.
+    - An explicit offset (e.g. '+02:00') is converted to UTC.
+    - A naive timestamp (no offset) is considered to be UTC.
+    """
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as e:
+        raise InvalidStudySessionData("timestamp", f"invalid ISO 8601 datetime: {e}")
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _validate_session_card_field(field: str, value: object) -> None:
@@ -53,9 +79,12 @@ def _validate_session_deck_field(field: str, value: object) -> str:
     return value
 
 
-def _validate_study_session_field(field: str, value: object) -> str:
-    if field == "timestamp" and not isinstance(value, str):
-        raise InvalidStudySessionData(field, "must be a string")
+def _validate_study_session_field(field: str, value: object) -> object:
+    if field == "timestamp":
+        if not isinstance(value, str):
+            raise InvalidStudySessionData(field, "must be a string")
+        return _parse_timestamp(value)
+
     if field == "tolerance_allowed" and not isinstance(value, bool):
         raise InvalidStudySessionData(field, "must be a boolean")
     if field == "is_tolerance_forced" and not isinstance(value, bool):
@@ -141,13 +170,12 @@ def parse_study_session(data: dict) -> dict:
     Raises:
         InvalidStudySessionData: `name` is missing, or a field is invalid.
     """
-    for field, value in data.items():
-        if field == "timestamp" and value == None:
-            raise InvalidStudySessionData(field, "must not be empty")
-        if field == "tolerance_allowed" and not value == None:
-            raise InvalidStudySessionData(field, "must not be empty")
-        if field == "is_tolerance_forced" and not value == None:
-            raise InvalidStudySessionData(field, "must not be empty")
+
+    for param in _STUDY_SESSION_REQUIRED_PARAMS:
+        if param not in data:  # Check if requiert params are here
+            raise InvalidStudySessionData(param, "field is required")
+        if param in data and data[param] == None:  # Check for None value
+            raise InvalidStudySessionData(param, "must not be empty")
 
     return {
         "timestamp": _validate_study_session_field("timestamp", data["timestamp"]),
