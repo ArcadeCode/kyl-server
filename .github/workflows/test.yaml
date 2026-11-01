@@ -1,0 +1,63 @@
+name: Run tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: 5432
+    POSTGRES_DATABASE: kyl-pgdb
+    POSTGRES_USERNAME: admin
+    POSTGRES_PASSWORD: admin
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14"]
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v6
+
+    - name: Install UV
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Python
+      run: uv python install
+
+    - name: Install dependencies
+      run: uv sync --locked --all-extras --dev
+
+    - name: Run Docker compose
+      run: docker compose -f compose.test.yml up -d
+
+    - name: Run tests with coverage
+      if: matrix.python-version == '3.14'
+      run: uv run pytest tests/ --cov=package_name --cov-report=html --cov-report=xml
+
+    - name: Generate coverage badge
+      if: matrix.python-version == '3.14'
+      run: uv run genbadge coverage -i coverage.xml -o coverage-badge.svg
+
+    - name: Upload coverage report
+      if: matrix.python-version == '3.14'
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage-report
+        path: htmlcov/
+
+    - name: Upload coverage badge
+      if: matrix.python-version == '3.14'
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage-badge
+        path: coverage-badge.svg
