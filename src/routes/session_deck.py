@@ -14,18 +14,18 @@ from services.session import parse_session_card
 
 def _owned_session_deck(session_deck_id: int) -> SessionDeck | None:
     """
-    Return the session card, only if its deck belongs to the caller (otherwise None, never a 403).
+    Return the session deck, only if it belongs to the caller (otherwise None, never a 403).
 
     As a reminder for each Session :
-        each SessionCard are linked to one SessionDeck
-        all SessionDeck are linked to one StudySession
+        each SessionCard is linked to one SessionDeck
+        each SessionDeck is linked to one StudySession
     """
     return db.session.scalar(
-        select(SessionCard)
-        .join(StudySession, SessionDeck.decks == StudySession.decks)
+        select(SessionDeck)
+        .join(StudySession, SessionDeck.study_session_id == StudySession.session_id)
         .where(
             SessionDeck.session_deck_id == session_deck_id,
-            SessionDeck.owner_email == g.account_email,
+            StudySession.owner_email == g.account_email,
         )
     )
 
@@ -110,7 +110,7 @@ def create_session_card(session_deck_id: int):
     count = db.session.scalar(
         select(func.count())
         .select_from(SessionCard)
-        .where(SessionCard.deck_id == owned.deck_id)
+        .where(SessionCard.session_deck_id == owned.session_deck_id)
     )
     if count >= MAX_CARD_BY_DECK:
         return error_response(
@@ -119,7 +119,7 @@ def create_session_card(session_deck_id: int):
             409,
         )
 
-    new_session_card.deck_id = owned.deck_id
+    new_session_card.session_deck_id = owned.session_deck_id
     db.session.add(new_session_card)
     if (failure := _commit_or_500()) is not None:
         return failure
@@ -129,7 +129,7 @@ def create_session_card(session_deck_id: int):
 
 @session.route(
     "/api/v1/session/deck/<int:session_deck_id>/cards",
-    methods=["POST"],
+    methods=["GET"],
 )
 @require_token
 def get_all_session_cards(session_deck_id: int):
@@ -143,11 +143,11 @@ def get_all_session_cards(session_deck_id: int):
     """
     owned = _owned_session_deck(session_deck_id)
     if owned is None:
-        return error_response("DeckNotFound", "Deck not found.", 404)
+        return error_response("SessionDeckNotFound", "Session deck not found.", 404)
 
     session_cards = db.session.scalars(
         select(SessionCard)
-        .where(SessionCard.deck_id == owned.deck_id)
-        .order_by(SessionCard.position, SessionCard.card_id)
+        .where(SessionCard.session_deck_id == owned.session_deck_id)
+        .order_by(SessionCard.position, SessionCard.session_card_id)
     ).all()
     return jsonify([c.to_dict() for c in session_cards]), 200

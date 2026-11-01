@@ -14,16 +14,16 @@ def _owned_session_card(session_card_id: int) -> SessionCard | None:
     Return the session card, only if its deck belongs to the caller (otherwise None, never a 403).
 
     As a reminder for each Session :
-        each SessionCard are linked to one SessionDeck
-        all SessionDeck are linked to one StudySession
+        each SessionCard is linked to one SessionDeck
+        each SessionDeck is linked to one StudySession
     """
     return db.session.scalar(
         select(SessionCard)
         .join(SessionDeck, SessionCard.session_deck_id == SessionDeck.session_deck_id)
-        .join(StudySession, SessionDeck.decks == StudySession.decks)
+        .join(StudySession, SessionDeck.study_session_id == StudySession.session_id)
         .where(
             SessionCard.session_card_id == session_card_id,
-            SessionDeck.owner_email == g.account_email,
+            StudySession.owner_email == g.account_email,
         )
     )
 

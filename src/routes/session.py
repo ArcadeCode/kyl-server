@@ -3,9 +3,9 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from auth import require_token
-from consts import MAX_DECK_BY_USER, MAX_SESSION_BY_USER, MAX_STUDY_SESSIONS_PER_DAY
+from consts import MAX_DECK_BY_SESSION, MAX_SESSION_BY_USER, MAX_STUDY_SESSIONS_PER_DAY
 from database import db
-from exceptions import InvalidDeckData
+from exceptions import InvalidSessionDeckData, InvalidStudySessionData
 from models.session import SessionDeck, StudySession
 from routes.utils import error_response
 from services.session import parse_session_deck, parse_study_session
@@ -15,7 +15,7 @@ def _owned_session(session_id: int) -> StudySession | None:
     """Return the session, only if it belongs to the caller (otherwise None, never a 403)."""
     return db.session.scalar(
         select(StudySession).where(
-            StudySession.deck_id == session_id,
+            StudySession.session_id == session_id,
             StudySession.owner_email == g.account_email,
         )
     )
@@ -88,7 +88,7 @@ def create_session():
 
     try:
         fields = parse_study_session(body)
-    except InvalidDeckData as e:
+    except (InvalidStudySessionData, InvalidSessionDeckData) as e:
         return error_response("InvalidRequest", f"{e.field}: {e.reason}", 400)
 
     # TODO: Complete that and the MAX_STUDY_SESSIONS_PER_DAY
@@ -102,14 +102,15 @@ def create_session():
         # Delete the first session after MAX_SESSION_BY_USER
         # is hit. This behavior is temporary and will be change
         # in v1.1, see [the TODO: about that](../consts.py)
-        deleted_session = db.session.scalar(
-            delete(StudySession)
-            .where(StudySession.owner_email == g.account_email)
-            .order_by(StudySession.timestamp.desc())
-            .limit(1)
-        )
-        print(
-            f"User, MAX_SESSION_BY_USER ({MAX_SESSION_BY_USER}) being hit, deleting session : {deleted_session.to_dict()}"
+        db.session.execute(
+            delete(StudySession).where(
+                StudySession.session_id.in_(
+                    select(StudySession.session_id)
+                    .where(StudySession.owner_email == g.account_email)
+                    .order_by(StudySession.timestamp.asc())
+                    .limit(1)
+                )
+            )
         )
 
     new_session = StudySession(owner_email=g.account_email, **fields)
@@ -156,17 +157,18 @@ def get_all_session_decks(study_session_id: int):
     Answers:
         - 200: [session_deck0, session_deck1, ...]
         - 401: missing / invalid / already revoked / expired token (see require_token)
+        - 404 `SessionNotFound`: absent, or not owned by the caller
     """
     owned = _owned_session(study_session_id)
     if owned is None:
-        return error_response("SessionDeckNotFound", "Session deck not found.", 404)
+        return error_response("SessionNotFound", "Session not found.", 404)
 
-    session_cards = db.session.scalars(
+    session_decks = db.session.scalars(
         select(SessionDeck)
-        .where(SessionDeck.session_deck_id == owned.session_deck_id)
-        .order_by(SessionDeck.position, SessionDeck.session_card_id)
+        .where(SessionDeck.study_session_id == owned.session_id)
+        .order_by(SessionDeck.session_deck_id)
     ).all()
-    return jsonify([c.to_dict() for c in session_cards]), 200
+    return jsonify([d.to_dict() for d in session_decks]), 200
 
 
 @session.route("/api/v1/session/<int:study_session_id>/decks", methods=["POST"])
@@ -184,29 +186,35 @@ def create_session_deck(study_session_id: int):
         - 201: {"session_deck": {...}}
         - 400 `InvalidRequest`: body is not a JSON object, or a field is invalid
         - 401: see require_token
-        - 409 `SessionDeckLimitReached`: the deck already has MAX_DECK_BY_USER cards
+        - 404 `SessionNotFound`: absent, or not owned by the caller
+        - 409 `SessionDeckLimitReached`: the session already has MAX_DECK_BY_SESSION decks
     """
+    owned = _owned_session(study_session_id)
+    if owned is None:
+        return error_response("SessionNotFound", "Session not found.", 404)
+
     body = _json_body()
     if body is None:
         return error_response("InvalidRequest", "Body must be a JSON object.", 400)
 
     try:
         fields = parse_session_deck(body)
-    except InvalidDeckData as e:
+    except InvalidSessionDeckData as e:
         return error_response("InvalidRequest", f"{e.field}: {e.reason}", 400)
 
     count = db.session.scalar(
         select(func.count())
         .select_from(SessionDeck)
-        .where(SessionDeck.owner_email == g.account_email)
+        .where(SessionDeck.study_session_id == owned.session_id)
     )
-    if count >= MAX_SESSION_BY_USER:
+    if count >= MAX_DECK_BY_SESSION:
         return error_response(
             "SessionDeckLimitReached",
-            f"Limit of {MAX_DECK_BY_USER} decks reached.",
+            f"Limit of {MAX_DECK_BY_SESSION} decks reached.",
             409,
         )
-    new_session_deck = SessionDeck(owner_email=g.account_email, **fields)
+
+    new_session_deck = SessionDeck(study_session_id=owned.session_id, **fields)
     db.session.add(new_session_deck)
     if (failure := _commit_or_500()) is not None:
         return failure

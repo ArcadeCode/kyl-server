@@ -16,6 +16,8 @@ from flask import Flask
 from sqlalchemy.engine import URL
 
 import models  # noqa: F401  (registers every table on the metadata)
+import routes.session_card  # noqa: F401  (registers extra routes on the `session` blueprint)
+import routes.session_deck  # noqa: F401  (registers extra routes on the `session` blueprint)
 from database import db
 from routes.card import card
 from routes.deck import deck
