@@ -1,25 +1,45 @@
 # Roadmap
 
-- **v0.1.0** : Final touch
+- **v0.1** : Final touch (MVP)
+    - [ ] Setup Alembic and ready-to-deploy Docker image for the backend.
     - [ ] Make the Session historic infinite with compression of old entries.
+    - [ ] Add stress tests for the backend.
     - [X] Setup the SMTP server for password reset.
-- **v0.2.0** : FastAPI port
+- **v0.2** : FastAPI port
     - [ ] Switching the backend from Flask for FastAPI.
+    - [ ] Ensure each endpoint use atomic sql request. And testing them.
+    - [ ] Add propre tests for password reset endpoint with disposable SMTP server container.
     - [ ] Add Pydantic to the backend.
     - [ ] Switch to JIT token.
     - [ ] Add API rating for each endpoint.
-- **v0.3.0** : Gamification
-    - [ ] Add flash card sorting system.
+- **v0.3** : Fast boy
+    - [ ] Find perfect FastAPI + Uvicorn + SQL engine configuration for speed and parallel tasks.
+    - [ ] Check for backend optimizations.
+    - [ ] Check for frontend optimizations.
+- **v0.4** : Gamification
+    - [ ] Add flash card reminder system.
     - [ ] Add badges as achievements.
-- **v1.0.0** : Better frontend
-    - [ ] Choosing [Preact](https://preactjs.com/) or [Petite-vue](https://github.com/vuejs/petite-vue) as new framework.
-- **v1.1.0** : OCR welcome and utils
+    - [ ] Add "timed" parameter for sessions.
+- **v1.0** : Better frontend (First official release)
+    - [ ] Add "changelog" and "futur shutdown notifier". (This imply some addition to the backed).
+    - [ ] Add folder system. (This imply some addition to the backend).
+    - [ ] Add stress tests for the frontend. (This imply some addition to the backend).
+    - [ ] Add "switch account" button.
+    - [ ] Add Administrator dashboard with associate utilities.
+        - User account browser
+        - Ban system
+        - "Start a maintenance" button
+        - User anormal activity and api rates analyser
+        - Storage usage analyser (By user, by table, ...)
+        - Traffic analyser
+    - [ ] Choose between regrouping repos into a monorepo or launching an organization.
+- **v1.1** : OCR welcome and utils
     - [ ] Add Science formulas OCR for direct image to LaTex translation.
     - [ ] Add a "Share" button to decks for sharing a copy of the deck to an user by his email.
-- **v1.2.0** : Bot !
+- **v1.2** : Bot !
     - [ ] Bot discord "kyl-bot" who remind user to continue working and allow a new backup method of the user data.
 
-- **v2.0.0** : Future proof
+- **v2.0** : Future proof
     > The main goal of v2 is to make KYL more permissive, but it will requiert a big rework of the backend.
     - [ ] Allow importing Deck from other user, and auto-updating the imported Decks.
     - [ ] Allow multi-user owner for Deck.
@@ -27,3 +47,4 @@
     - [ ] Create other Cards formats.
         - Link columns
         - Multiple/single-choice question
+    - [ ] Having real web-apps for using persistant storage with Tauri.
