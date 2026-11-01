@@ -16,6 +16,16 @@ PROTECTED = [
     ("get", "/api/v1/card/1"),
     ("patch", "/api/v1/card/1"),
     ("delete", "/api/v1/card/1"),
+    ("get", "/api/v1/sessions"),
+    ("post", "/api/v1/session"),
+    ("delete", "/api/v1/session/1"),
+    ("get", "/api/v1/session/1/decks"),
+    ("post", "/api/v1/session/1/decks"),
+    ("delete", "/api/v1/session/deck/1"),
+    ("get", "/api/v1/session/deck/1/cards"),
+    ("post", "/api/v1/session/deck/1/cards"),
+    ("get", "/api/v1/session/card/1"),
+    ("delete", "/api/v1/session/card/1"),
 ]
 
 
@@ -58,7 +68,9 @@ def test_revoked_token_is_rejected(client, user, make_token, method, path):
     assert call(client, method, path, bearer(key)).get_json()["error"] == "InvalidToken"
 
 
-def test_a_revoked_token_cannot_read_decks_any_more(client, user, make_token, make_deck):
+def test_a_revoked_token_cannot_read_decks_any_more(
+    client, user, make_token, make_deck
+):
     make_deck(user["email"], name="Maths")
     key = make_token(user["email"])
     assert client.get("/api/v1/decks", headers=bearer(key)).status_code == 200

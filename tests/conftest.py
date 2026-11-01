@@ -19,10 +19,12 @@ from sqlalchemy.exc import OperationalError
 
 from app import create_app
 from database import db
-from models import Account, Card, Deck, Token
+from models import Account, Card, Deck, SessionCard, SessionDeck, StudySession, Token
 from services.token import generate_and_hash_token
 
-DEFAULT_TEST_DATABASE_URL = "postgresql+psycopg2://kyl_test:kyl_test@localhost:5433/kyl_test"
+DEFAULT_TEST_DATABASE_URL = (
+    "postgresql+psycopg2://kyl_test:kyl_test@localhost:5433/kyl_test"
+)
 
 
 def pytest_collection_modifyitems(items):
@@ -97,7 +99,9 @@ def make_account(app):
 
     def _make(email="user@example.com", password="abc12", name="User"):
         with app.app_context():
-            db.session.add(Account(email=email, name=name, password=fast_hash(password)))
+            db.session.add(
+                Account(email=email, name=name, password=fast_hash(password))
+            )
             db.session.commit()
         return {"email": email, "password": password, "name": name}
 
@@ -139,7 +143,9 @@ def make_deck(app):
         with app.app_context():
             deck = Deck(name=name, description=description, owner_email=owner_email)
             for position, (question, answer) in enumerate(cards):
-                deck.cards.append(Card(question=question, answer=answer, position=position))
+                deck.cards.append(
+                    Card(question=question, answer=answer, position=position)
+                )
             db.session.add(deck)
             db.session.commit()
             return deck.deck_id
@@ -163,6 +169,85 @@ def make_card(app):
             db.session.add(card)
             db.session.commit()
             return card.card_id
+
+    return _make
+
+
+@pytest.fixture
+def make_study_session(app):
+    """Insert a study session for an existing owner. Returns its session_id."""
+
+    def _make(
+        owner_email, timestamp=None, tolerance_allowed=True, is_tolerance_forced=False
+    ):
+        with app.app_context():
+            study = StudySession(
+                owner_email=owner_email,
+                timestamp=timestamp or datetime.now(timezone.utc),
+                tolerance_allowed=tolerance_allowed,
+                is_tolerance_forced=is_tolerance_forced,
+            )
+            db.session.add(study)
+            db.session.commit()
+            return study.session_id
+
+    return _make
+
+
+@pytest.fixture
+def make_session_deck(app):
+    """
+    Insert a session deck (with optional cards) in an existing study session.
+    Returns its session_deck_id.
+
+    `cards` is an iterable of (question, correct_answer, user_answer); positions follow the order.
+    """
+
+    def _make(study_session_id, name="Deck", description="", cards=()):
+        with app.app_context():
+            snapshot = SessionDeck(
+                name=name, description=description, study_session_id=study_session_id
+            )
+            for position, (question, correct, user) in enumerate(cards):
+                snapshot.cards.append(
+                    SessionCard(
+                        question=question,
+                        correct_answer=correct,
+                        user_answer=user,
+                        position=position,
+                    )
+                )
+            db.session.add(snapshot)
+            db.session.commit()
+            return snapshot.session_deck_id
+
+    return _make
+
+
+@pytest.fixture
+def make_session_card(app):
+    """Insert one session card in an existing session deck. Returns its session_card_id."""
+
+    def _make(
+        session_deck_id,
+        question="q",
+        correct_answer="a",
+        user_answer="a",
+        is_tolerant=True,
+        position=0,
+    ):
+        with app.app_context():
+            card = SessionCard(
+                session_deck_id=session_deck_id,
+                question=question,
+                correct_answer=correct_answer,
+                user_answer=user_answer,
+                is_tolerant=is_tolerant,
+                position=position,
+            )
+            db.session.add(card)
+            db.session.commit()
+            return card.session_card_id
 
     return _make
 

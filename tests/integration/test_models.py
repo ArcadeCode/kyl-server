@@ -54,18 +54,25 @@ EXPECTED_COLUMNS = {
         "revoked_at": True, "account_email": False,
     },
     "study_session": {
-        "id": False, "timestamp": False, "owner_email": False, "tolerance_allowed": False,
+        "session_id": False, "timestamp": False, "owner_email": False,
+        "tolerance_allowed": False, "is_tolerance_forced": False,
     },
-    "session_deck": {"id": False, "name": False, "description": False, "study_session_id": False},
+    "session_deck": {
+        "session_deck_id": False, "name": False, "description": False,
+        "study_session_id": False,
+    },
     "session_card": {
-        "id": False, "question": False, "answer": False,
-        "is_tolerant": False, "position": False, "session_deck_id": False,
+        "session_card_id": False, "question": False, "correct_answer": False,
+        "user_answer": False, "is_tolerant": False, "position": False,
+        "session_deck_id": False,
     },
+    
 }
 
 EXPECTED_PRIMARY_KEYS = {
     "account": ["email"], "deck": ["deck_id"], "card": ["card_id"], "token": ["token_hash"],
-    "study_session": ["id"], "session_deck": ["id"], "session_card": ["id"],
+    "study_session": ["session_id"], "session_deck": ["session_deck_id"], "session_card": ["session_card_id"],
+    
 }
 
 # (table, column) -> (referred table, referred column)
@@ -74,8 +81,8 @@ EXPECTED_FOREIGN_KEYS = {
     ("card", "deck_id"): ("deck", "deck_id"),
     ("token", "account_email"): ("account", "email"),
     ("study_session", "owner_email"): ("account", "email"),
-    ("session_deck", "study_session_id"): ("study_session", "id"),
-    ("session_card", "session_deck_id"): ("session_deck", "id"),
+    ("session_deck", "study_session_id"): ("study_session", "session_id"),
+    ("session_card", "session_deck_id"): ("session_deck", "session_deck_id"),
 }
 
 
@@ -246,7 +253,7 @@ def test_token_datetimes_roundtrip_timezone_aware(ctx):
 
 def test_study_session_timestamp_defaults_to_now_utc(ctx):
     ctx.add(account())
-    session = StudySession(owner_email="a@b.fr", tolerance_allowed=True)
+    session = StudySession(owner_email="a@b.fr", tolerance_allowed=True, is_tolerance_forced=False)
     ctx.add(session)
     ctx.commit()
     ctx.refresh(session)
@@ -256,9 +263,11 @@ def test_study_session_timestamp_defaults_to_now_utc(ctx):
 
 def test_session_card_is_tolerant_by_default(ctx):
     ctx.add(account())
-    study = StudySession(owner_email="a@b.fr", tolerance_allowed=False)
+    study = StudySession(owner_email="a@b.fr", tolerance_allowed=False, is_tolerance_forced=False)
     snapshot = SessionDeck(name="d", study_session=study)
-    snapshot.cards.append(SessionCard(question="q", answer="a", position=0))
+    snapshot.cards.append(
+        SessionCard(question="q", correct_answer="a", user_answer="a", position=0)
+    )
     ctx.add(study)
     ctx.commit()
     assert snapshot.cards[0].is_tolerant is True
@@ -295,9 +304,9 @@ def test_deck_cards_are_ordered_by_position(ctx):
 
 def test_session_snapshot_relations_and_ordering(ctx):
     acc = account()
-    study = StudySession(owner=acc, tolerance_allowed=True)
+    study = StudySession(owner=acc, tolerance_allowed=True, is_tolerance_forced=False)
     snapshot = SessionDeck(name="d", study_session=study)
-    snapshot.cards += [SessionCard(question="q", answer="a", position=p) for p in (1, 0)]
+    snapshot.cards += [SessionCard(question="q", correct_answer="a", user_answer="b", position=p) for p in (1, 0)]
     ctx.add_all([acc, study])
     ctx.commit()
     ctx.expire_all()
@@ -325,9 +334,9 @@ def populate_everything(ctx):
     acc = account()
     deck = Deck(name="d", owner=acc)
     deck.cards.append(Card(question="q", answer="a", position=0))
-    study = StudySession(owner=acc, tolerance_allowed=True)
+    study = StudySession(owner=acc, tolerance_allowed=True, is_tolerance_forced=False)
     snapshot = SessionDeck(name="d", study_session=study)
-    snapshot.cards.append(SessionCard(question="q", answer="a", position=0))
+    snapshot.cards.append(SessionCard(question="q", correct_answer="a", user_answer="a", position=0))
     token = Token(token_hash="h" * 64, created_at=NOW(), expires_at=NOW(), account=acc)
     ctx.add_all([acc, deck, study, token])
     ctx.commit()
@@ -381,3 +390,25 @@ def test_deleting_one_account_does_not_touch_another(ctx):
     ctx.commit()
     assert [a.email for a in ctx.scalars(select(Account))] == ["other@b.fr"]
     assert [t.token_hash for t in ctx.scalars(select(Token))] == ["o" * 64]
+
+def test_study_session_requires_the_two_tolerance_flags(ctx):
+    ctx.add(account())
+    ctx.commit()
+    for values in ({"tolerance_allowed": True}, {"is_tolerance_forced": True}):
+        ctx.add(StudySession(owner_email="a@b.fr", **values))
+        with pytest.raises(IntegrityError):
+            ctx.commit()
+        ctx.rollback()
+
+
+def test_session_card_requires_both_answers(ctx):
+    acc = account()
+    study = StudySession(owner=acc, tolerance_allowed=True, is_tolerance_forced=False)
+    snapshot = SessionDeck(name="d", study_session=study)
+    ctx.add_all([acc, study])
+    ctx.commit()
+    for values in ({"correct_answer": "a"}, {"user_answer": "a"}):
+        ctx.add(SessionCard(session_deck_id=snapshot.session_deck_id, question="q", position=0, **values))
+        with pytest.raises(IntegrityError):
+            ctx.commit()
+        ctx.rollback()
