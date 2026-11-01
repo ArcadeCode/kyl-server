@@ -21,6 +21,9 @@ tests/
     test_deck_cards_routes.py # GET/POST /deck/<id>/cards
     test_card_routes.py       # GET/PATCH/DELETE /card/<id>
     test_protected_routes.py  # every deck/card route rejects anonymous callers
+    test_study_session_routes.py  # GET /sessions, POST /session, DELETE /session/<id>
+    test_session_deck_routes.py   # GET/POST /session/<id>/decks, DELETE /session/deck/<id>
+    test_session_card_routes.py   # GET/POST /session/deck/<id>/cards, GET/DELETE /session/card/<id>
 ```
 
 Rule of thumb:
@@ -181,6 +184,25 @@ Inserts one card in an existing deck and returns its `card_id`.
 card_id = make_card(deck_id, question="Q", answer="A", is_tolerant=False, position=3)
 ```
 
+### `make_study_session` (function)
+
+Inserts a study session for an **existing** account and returns its `session_id`.
+```python
+session_id = make_study_session("user@example.com", timestamp=None, tolerance_allowed=True, is_tolerance_forced=False)
+```
+### `make_session_deck` (function)
+
+Inserts a session deck in an existing study session and returns its `session_deck_id`.
+Cards are `(question, correct_answer, user_answer)` tuples; positions follow the list order.
+```python
+deck_id = make_session_deck(session_id, name="Maths", cards=[("1+1 ?", "2", "3")])
+```
+### `make_session_card` (function)
+
+Inserts one session card in an existing session deck and returns its `session_card_id`.
+```python
+card_id = make_session_card(deck_id, question="Q", correct_answer="A", user_answer="B", is_tolerant=False, position=3)
+```
 ---
 
 ## 6. Anatomy of an integration test
@@ -336,6 +358,13 @@ assert a == b
 See `protected_client` in `test_auth.py`. Use it when you need a route that exists
 only for the test.
 
+### Shrink a limit to test it quickly
+
+`MAX_SESSION_BY_USER` is 100: creating 100 rows per test is slow. Patch the constant where it
+is **used** (`routes.session`), not in `consts`:
+```python
+monkeypatch.setattr(session_routes, "MAX_SESSION_BY_USER", 3)
+```
 ---
 
 ## 10. Gotchas
