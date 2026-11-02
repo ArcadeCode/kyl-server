@@ -12,11 +12,27 @@
     - [ ] Add Pydantic to the backend.
     - [ ] Switch to JIT token.
     - [ ] Add API rating for each endpoint.
-- **v0.3** : Fast boy
+- **V0.3** : Offline synchronization support
+    - Backend
+        - [ ] Add `updated_at` column (timezone-aware, `onupdate`) on `Deck` and `Card`
+        - [ ] Replace lhard delete by a soft delete (`deleted_at`) on `DELETE /deck/<id>` and `DELETE /card/<id>`.
+        - [ ] Filter `deleted_at IS NULL` on every active reads (`GET /decks`, `GET /deck/<id>/cards`).
+        - [ ] Add a task (or triggerable endpoint) for the permanent purge of soft-deleted items older than 30 days.
+        - [ ] Add support for an idempotency key on `POST /decks` and `POST /deck/<id>/cards` (header `Idempotency-Key`), with a server-side deduplication table.
+        - [ ] Define and document the conflict behavior on `PATCH` when the client `updated_at` is older than the server’s (silently ignore vs. `409` with the current state).
+        - [ ] Extend `to_dict()` of the relevant models to expose `updated_at` (and `deleted_at` if relevant) to clients.
+    - Frontend (KYL App)
+        - [ ] `syncQueue` table in IndexedDB (Dexie): one entry per mutation (`entityType`, `op`, `localId`, `payload`, `status`, `attempts`).
+        - [ ] Generate a temporary local ID (UUID) for any entity created offline, with a `localId → serverId` mapping table.
+        - [ ] Replay the queue in causal order (deck before its cards), rewriting temporary `deck_id` values once the `serverId` is known.
+        - [ ] Trigger synchronization on `online` / `visibilitychange`, with debounce (~3–5s) and exponential backoff on failure.
+        - [ ] Visible indicator per deck/card: synchronized / pending / sync failed.
+        - [ ] Handle `409` conflicts: fetch the server state, merge by `updated_at`, reapply or silently discard the obsolete queue entry.
+- **v0.4** : Fast boy
     - [ ] Find perfect FastAPI + Uvicorn + SQL engine configuration for speed and parallel tasks.
     - [ ] Check for backend optimizations.
     - [ ] Check for frontend optimizations.
-- **v0.4** : Gamification
+- **v0.5** : Gamification
     - [ ] Add flash card reminder system.
     - [ ] Add badges as achievements.
     - [ ] Add "timed" parameter for sessions.
